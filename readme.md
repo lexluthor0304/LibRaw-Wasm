@@ -1,3 +1,4 @@
+<sub>*Follow me on X [@ybouane](https://x.com/ybouane) — I'm building in public.*</sub>
 # LibRaw-Wasm
 A WebAssembly build of LibRaw, powered by Emscripten and leveraging Web Workers. This lets you decode and process RAW image files directly in the browser or in a Node.js environment supporting WebAssembly. With LibRaw-Wasm, you can extract metadata and obtain decoded image data from formats such as CR2, NEF, ARW, DNG, and more.
 
@@ -30,6 +31,10 @@ output.innerText = JSON.stringify(meta, null, 4);
 const imageData = await raw.imageData();
 console.log('Image data:', imageData);
 console.log('Image data length:', imageData.length);
+
+// Fetch the raw, undebayered sensor data (16-bit mosaic, no demosaicing)
+const rawImageData = await raw.rawImageData();
+console.log('Raw sensor data:', rawImageData); // { raw_width, raw_height, width, height, top_margin, left_margin, data: Uint16Array }
 
 ```
 
@@ -88,6 +93,11 @@ console.log('Image data length:', imageData.length);
 - **Memory:** WebAssembly modules can allocate a significant amount of memory. Check your environment’s limits if you work with very large files.
 
 ## Local development
- - If you're making changes in the CPP wrapper, launch `compileLibraw.sh`
- - If you're launching it on MacOS, make sure that emscripten is installed (e.g. `brew install emscripten`) + build dependencies are insalled (e.g. `brew install autoconf automake libtool`)
- - Don't forget to run `npm build` for esbuild installation!
+ - If you're making changes in the CPP wrapper, launch `compileLibraw.sh` (or `npm run compile`). It builds the LCMS + LibRaw static libs once into `libs/`/`includes/` and reuses them on subsequent runs; set `FORCE_LIBS=1` to rebuild them (e.g. after changing pinned versions).
+ - If you're launching it on MacOS, make sure that emscripten is installed (e.g. `brew install emscripten`) + build dependencies are insalled (e.g. `brew install autoconf automake libtool`). The pinned toolchain is Emscripten 5.0.7.
+ - Tests: `npm test` runs the fast worker reply-routing unit test; `npm run test:integration` decodes `example-sony.ARW` in headless Chromium (run `npx playwright install chromium` first).
+
+## CI/CD
+ - **PRs** (`ci.yml`): the wasm is built from source and the full test suite runs on every pull request — so you do **not** need to build or commit any binaries (`dist/`, `libraw.wasm`, …). CI regenerates them.
+ - **main** (`build-artifacts.yml`): when a build-affecting file changes on `main`, CI rebuilds the wasm and commits the regenerated artifacts back, keeping the checked-in binaries authoritative.
+ - **Releases** (`release.yml`): pushing a `v*` tag builds from source, tests, and publishes to npm (with provenance, via OIDC trusted publishing) plus a GitHub Release. Cut one with `npm version <patch|minor|major> && git push --follow-tags`.
